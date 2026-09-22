@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Http\Requests\StoreTaskRequest;
+use App\Http\Requests\UpdateTaskRequest;
 use App\Models\Task;
 
 class TaskController extends Controller
@@ -10,26 +11,32 @@ class TaskController extends Controller
     public function index()
     {
         $tasks = Task::all();
-        return view('tasks.index', compact('tasks'));
+        return response()->json(['data' => $tasks], 200);
     }
 
     public function store(StoreTaskRequest $request)
     {
-        // Code to create a new task
+        $task = Task::create($request->validated());
+        return response()->json(
+            ['data' => $task ,
+             'message' => 'Task created successfully'
+            ], 201);
     }
 
     public function show(Task $task)
     {
-        // Code to retrieve and return a specific task
+        return response()->json(['data' => $task], 200);
     }
 
-    public function update(StoreTaskRequest $request, Task $task)
+    public function update(UpdateTaskRequest $request, Task $task)
     {
-        // Code to update a specific task
+        $task->update($request->validated());
+        return response()->json(['data' => $task, 'message' => 'Task updated successfully'], 200);
     }
 
     public function destroy(Task $task)
     {
-        // Code to delete a specific task
+        $task->delete();
+        return response()->json(['message' => 'Task deleted successfully'], 200);
     }
 }
