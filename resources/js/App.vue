@@ -13,7 +13,7 @@ const taskForm = ref({
 });
 const formError = ref('');
 const editingTask = ref(null);
-const editError = ref('');
+const actionError = ref('');
 
 async function fetchTasks() {
     loading.value = true;
@@ -65,27 +65,30 @@ function startEdit(task) {
         status: task.status,
         due_date: task.due_date,
     };
+    if(editingTask.value.status === 'done') {
+        actionError.value = 'Cannot edit a task that is marked as done';
+        editingTask.value = null;
+    }
 }
 async function saveEditedTask() {
-    editError.value = '';
+    actionError.value = '';
 
-    if (!editingTask.value.due_date) {
-        editError.value = 'Due date is required';
+     if(editingTask.value.due_date < new Date().toISOString().split('T')[0]) {
+        actionError.value = 'Due date cannot be in the past';
         return;
     }
 
     try {
         await updateTask(editingTask.value.id, {
-            description: editingTask.value.description,
             status: editingTask.value.status,
             due_date: editingTask.value.due_date,
         });
-
         await fetchTasks();
-
         editingTask.value = null;
-    } catch (err) {
-        editError.value = err.message;
+        actionError.value = null;
+    } 
+    catch (err) {
+        actionError.value = err.message;
     }
 }
 async function handleDeleteTask(task) {
@@ -101,7 +104,7 @@ async function handleDeleteTask(task) {
         await deleteTask(task.id);
         await fetchTasks();
     } catch (err) {
-        error.value = err.message;
+        actionError.value = err.message;
     }
 }
 
@@ -111,67 +114,204 @@ onMounted(() => {
 </script>
 
 <template>
-    <main>
-        <h1>Task Manager</h1>
-        <p v-if="loading">
-            Loading tasks...
-        </p>
-        <p v-else-if="loadingError">
-            {{ loadingError }}
-        </p>
-        <p v-else-if="tasks.length === 0">
-            No tasks found.
-        </p>
-        <ul v-else>
-            <li
-                v-for="task in tasks"
-                :key="task.id">
-                <strong>{{ task.title }}</strong>
-                -
-                {{ task.description }}
-                -
-                {{ task.status }}
-                -
-                {{ task.due_date }}
-                -
-                <button @click="startEdit(task)"> Edit </button>
-            
-                <button @click="handleDeleteTask(task)"> Delete </button>
-            </li>
-        </ul>
-        <div v-if="editingTask">
-            <h3>Edit Task</h3>
-            <select v-model="editingTask.status">
-                <option value="pending">Pending</option>
-                <option value="in_progress">In Progress</option>
-                <option value="done">Done</option>
-            </select>
-            <input v-model="editingTask.due_date" type="date" >
-            <button @click="saveEditedTask"> Save </button>
-            <button @click="editingTask = null"> Cancel </button>
-        </div>
-        <form @submit.prevent="createNewTask">
-            <div>   
-                <label>Title:</label>
-                <input
-                v-model="taskForm.title" type="text"
-                placeholder="Task Title"
-            />
+    <main class="page">
+        <div class="container">
+            <header class="page-header">
+                <div>
+                    <h1>Task Manager</h1>
+                    <p>Manage your team's tasks in one place.</p>
+                </div>
+            </header>
+
+            <p v-if="loading" class="state-message">
+                Loading tasks...
+            </p>
+
+            <p v-else-if="loadingError" class="error-message">
+                {{ loadingError }}
+            </p>
+
+            <section v-else class="content-grid">
+                <!-- Tasks -->
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Tasks</h2>
+                        <span class="task-count">{{ tasks.length }}</span>
+                    </div>
+
+                    <p v-if="tasks.length === 0" class="empty-state">
+                        No tasks found. Create your first task.
+                    </p>
+
+                    <div v-else class="task-list">
+                        <article
+                            v-for="task in tasks"
+                            :key="task.id"
+                            class="task-item"
+                        >
+                            <div class="task-main">
+                                <div class="task-top">
+                                    <h3>{{ task.title }}</h3>
+
+                                    <span
+                                        class="status"
+                                        :class="`status-${task.status}`"
+                                    >
+                                        {{ task.status.replace('_', ' ') }}
+                                    </span>
+                                </div>
+
+                                <p class="description">
+                                    {{ task.description || 'No description' }}
+                                </p>
+
+                                <p class="due-date">
+                                    Due: {{ task.due_date }}
+                                </p>
+                            </div>
+
+                            <div class="task-actions">
+                                <button
+                                    class="btn btn-secondary"
+                                    @click="startEdit(task)"
+                                >
+                                    Edit
+                                </button>
+
+                                <button
+                                    class="btn btn-danger"
+                                    @click="handleDeleteTask(task)"
+                                >
+                                    Delete
+                                </button>
+                            </div>
+                        </article>
+                    </div>
+
+                    <p v-if="actionError" class="error-message">
+                        {{ actionError }}
+                    </p>
+                </div>
+
+                <!-- Create -->
+                <div class="card">
+                    <h2>Create Task</h2>
+
+                    <form
+                        class="task-form"
+                        @submit.prevent="createNewTask"
+                    >
+                        <div class="form-group">
+                            <label for="title">Title</label>
+                            <input
+                                id="title"
+                                v-model="taskForm.title"
+                                type="text"
+                                placeholder="Task title"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="description">Description</label>
+                            <textarea
+                                id="description"
+                                v-model="taskForm.description"
+                                placeholder="Task description"
+                                rows="4"
+                            ></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="status">Status</label>
+                            <select
+                                id="status"
+                                v-model="taskForm.status"
+                            >
+                                <option value="pending">Pending</option>
+                                <option value="in_progress">In Progress</option>
+                                <option value="done">Done</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="due_date">Due Date</label>
+                            <input
+                                id="due_date"
+                                v-model="taskForm.due_date"
+                                type="date"
+                            >
+                        </div>
+
+                        <p v-if="formError" class="error-message">
+                            {{ formError }}
+                        </p>
+
+                        <button
+                            type="submit"
+                            class="btn btn-primary"
+                        >
+                            Create Task
+                        </button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Edit -->
+            <div v-if="editingTask" class="modal-backdrop">
+                <div class="modal">
+                    <div class="modal-header">
+                        <h2>Edit Task</h2>
+
+                        <button
+                            class="close-button"
+                            @click="editingTask = null"
+                        >
+                            ×
+                        </button>
+                    </div>
+
+                    <div class="task-form">
+                        <div class="form-group">
+                            <label>Status</label>
+
+                            <select v-model="editingTask.status">
+                                <option value="pending">Pending</option>
+                                <option value="in_progress">In Progress</option>
+                                <option value="done">Done</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Due Date</label>
+
+                            <input
+                                v-model="editingTask.due_date"
+                                type="date"
+                            >
+                        </div>
+
+                        <p v-if="actionError" class="error-message">
+                            {{ actionError }}
+                        </p>
+
+                        <div class="modal-actions">
+                            <button
+                                class="btn btn-secondary"
+                                @click="editingTask = null"
+                            >
+                                Cancel
+                            </button>
+
+                            <button
+                                class="btn btn-primary"
+                                @click="saveEditedTask"
+                            >
+                                Save Changes
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <textarea
-                v-model="taskForm.description"
-                placeholder="Task Description"
-            ></textarea>
-            <select v-model="taskForm.status">
-                <option value="pending">Pending</option>
-                <option value="in_progress">In Progress</option>
-                <option value="done">Completed</option>
-            </select>
-            <input
-                v-model="taskForm.due_date" type="date"
-            />
-            <button type="submit">Create Task</button>
-            <p v-if="formError" style="color: red;">{{ formError }}</p>
-        </form>
+        </div>
     </main>
 </template>
