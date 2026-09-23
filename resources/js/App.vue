@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import { getTasks, createTask } from './api/tasks';
+import { getTasks, createTask , updateTask , deleteTask } from './api/tasks';
 
 const tasks = ref([]);
 const loading = ref(true);
@@ -12,6 +12,8 @@ const taskForm = ref({
     due_date: ''
 });
 const formError = ref('');
+const editingTask = ref(null);
+const editError = ref('');
 
 async function fetchTasks() {
     loading.value = true;
@@ -54,7 +56,53 @@ async function createNewTask() {
     } catch (err) {
         formError.value = err.message;
     }
+}
+function startEdit(task) {
+    editingTask.value = {
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        status: task.status,
+        due_date: task.due_date,
+    };
+}
+async function saveEditedTask() {
+    editError.value = '';
 
+    if (!editingTask.value.due_date) {
+        editError.value = 'Due date is required';
+        return;
+    }
+
+    try {
+        await updateTask(editingTask.value.id, {
+            description: editingTask.value.description,
+            status: editingTask.value.status,
+            due_date: editingTask.value.due_date,
+        });
+
+        await fetchTasks();
+
+        editingTask.value = null;
+    } catch (err) {
+        editError.value = err.message;
+    }
+}
+async function handleDeleteTask(task) {
+    const confirmed = window.confirm(
+        `Are you sure you want to delete "${task.title}"?`
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    try {
+        await deleteTask(task.id);
+        await fetchTasks();
+    } catch (err) {
+        error.value = err.message;
+    }
 }
 
 onMounted(() => {
@@ -80,12 +128,28 @@ onMounted(() => {
                 :key="task.id">
                 <strong>{{ task.title }}</strong>
                 -
+                {{ task.description }}
+                -
                 {{ task.status }}
                 -
                 {{ task.due_date }}
+                -
+                <button @click="startEdit(task)"> Edit </button>
+            
+                <button @click="handleDeleteTask(task)"> Delete </button>
             </li>
         </ul>
-
+        <div v-if="editingTask">
+            <h3>Edit Task</h3>
+            <select v-model="editingTask.status">
+                <option value="pending">Pending</option>
+                <option value="in_progress">In Progress</option>
+                <option value="done">Done</option>
+            </select>
+            <input v-model="editingTask.due_date" type="date" >
+            <button @click="saveEditedTask"> Save </button>
+            <button @click="editingTask = null"> Cancel </button>
+        </div>
         <form @submit.prevent="createNewTask">
             <div>   
                 <label>Title:</label>
