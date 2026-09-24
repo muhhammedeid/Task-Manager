@@ -4,6 +4,16 @@ A simple task management application built with Laravel and Vue 3.
 
 The application allows users to create, view, update, and delete tasks through a Laravel REST API and a Vue 3 frontend.
 
+## Preview
+
+### Screenshot
+
+![Task Manager Screenshot](docs/Screen_Shoot.png)
+
+### Demo Video
+
+[Watch the Operations](docs\Operations.mp4) , [Watch the validation](docs\Validation.mp4)
+
 ## Features
 
 - View all tasks
