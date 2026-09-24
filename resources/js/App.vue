@@ -58,6 +58,7 @@ async function createNewTask() {
     }
 }
 function startEdit(task) {
+    actionError.value = '';
     editingTask.value = {
         id: task.id,
         title: task.title,
